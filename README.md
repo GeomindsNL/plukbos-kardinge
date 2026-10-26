@@ -111,7 +111,7 @@ mogrify -resize '900x900>' -strip -quality 72 data/foto/naam.jpg
 convert data/foto/naam.jpg -resize '240x240>' -strip -quality 72 data/foto/naam-klein.jpg
 ```
 
-Alle foto's samen zijn nu ongeveer 50 MB. Dat past ruim op GitHub Pages en op een gewone webserver. Komen er over de jaren veel inspecties bij, dan kunnen de foto's buiten de repository gezet worden; de velden `foto` en `fotos` accepteren ook volledige URL's.
+Alle foto's samen zijn nu ruim 60 MB. Dat past ruim op GitHub Pages en op een gewone webserver. Komen er over de jaren veel inspecties bij, dan kunnen de foto's buiten de repository gezet worden; de velden `foto` en `fotos` accepteren ook volledige URL's.
 
 ### Posities controleren
 

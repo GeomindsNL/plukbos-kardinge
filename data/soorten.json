@@ -33,7 +33,7 @@
   "Pruim": {
     "wetenschappelijk": "Prunus domestica",
     "aliassen": ["Prunus"],
-    "namen": ["Pruim"],
+    "namen": ["Pruim", "Pruimenboom"],
     "oogst": { "van": 8, "tot": 9 }
   },
   "Kroosjes": {
@@ -57,6 +57,16 @@
     "wetenschappelijk": "Ribes uva-crispa",
     "oogst": { "van": 7, "tot": 7 }
   },
+  "Jostabes": {
+    "wetenschappelijk": "Ribes nidigrolaria",
+    "aliassen": ["Ribes x nidigrolaria"],
+    "oogst": { "van": 7, "tot": 7 }
+  },
+  "Zwarte appelbes": {
+    "wetenschappelijk": "Aronia melanocarpa",
+    "namen": ["Appelbes", "Aronia"],
+    "oogst": { "van": 8, "tot": 9 }
+  },
   "Ribes": {
     "wetenschappelijk": "Ribes albifolium",
     "namen": ["Ribes albifolium"]
@@ -64,6 +74,10 @@
   "Braam": {
     "wetenschappelijk": "Rubus fruticosus agg.",
     "aliassen": ["Braam", "Rubus fruticosus"],
+    "oogst": { "van": 7, "tot": 9 }
+  },
+  "Framboos": {
+    "wetenschappelijk": "Rubus idaeus",
     "oogst": { "van": 7, "tot": 9 }
   },
   "Vijg": {
@@ -82,6 +96,12 @@
   },
   "Japanse walnoot": {
     "wetenschappelijk": "Juglans ailantifolia",
+    "oogst": { "van": 9, "tot": 10 }
+  },
+  "Japanse hartnoot": {
+    "wetenschappelijk": "Juglans ailantifolia var. cordiformis",
+    "aliassen": ["Juglans cordiformis"],
+    "namen": ["Hartnoot"],
     "oogst": { "van": 9, "tot": 10 }
   },
   "Pecannoot": {
@@ -115,9 +135,22 @@
     "namen": ["Gewone lijsterbes", "Lijsterbes"],
     "oogst": { "van": 9, "tot": 10 }
   },
+  "Elsbes": {
+    "wetenschappelijk": "Sorbus torminalis",
+    "oogst": { "van": 10, "tot": 11 }
+  },
+  "Gele kornoelje": {
+    "wetenschappelijk": "Cornus mas",
+    "namen": ["Gele Kornoelje", "Kornoelje"],
+    "oogst": { "van": 8, "tot": 9 }
+  },
   "Rimpelroos": {
     "wetenschappelijk": "Rosa rugosa",
     "namen": ["Japanse bottelroos", "Rimpelroos", "Bottelroos"],
+    "oogst": { "van": 9, "tot": 10 }
+  },
+  "Hondsroos": {
+    "wetenschappelijk": "Rosa canina",
     "oogst": { "van": 9, "tot": 10 }
   },
 
@@ -140,6 +173,15 @@
   },
   "Siberische sierappel": {
     "wetenschappelijk": "Malus baccata",
+    "eetbaar": false
+  },
+  "Chinese sierappel": {
+    "wetenschappelijk": "Malus hupehensis",
+    "namen": ["Chinese thee crabappel", "Theecrabappel"],
+    "eetbaar": false
+  },
+  "Tibetaanse kers": {
+    "wetenschappelijk": "Prunus serrula",
     "eetbaar": false
   },
   "Es": {
