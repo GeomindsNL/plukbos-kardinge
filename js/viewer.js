@@ -325,8 +325,8 @@
     if (b.struweel) klassen.push('is-struweel');
     if (b.inStruweel) klassen.push('is-in-struweel');
     if (animeer && st === 'rijp' && !minderBeweging) klassen.push('is-nieuw');
-    // Planten in een struweel staan dicht op elkaar binnen de omtrek; daarom veel kleiner.
-    var maat = (b.inStruweel ? Math.max(8, Math.round(MAAT[st] / 2)) : MAAT[st]) + (b.id === staat.gekozen ? 4 : 0);
+    // Planten in een struweel staan dicht op elkaar binnen de omtrek; daarom heel klein.
+    var maat = (b.inStruweel ? Math.max(7, Math.round(MAAT[st] * 0.4)) : MAAT[st]) + (b.id === staat.gekozen ? 4 : 0);
     return L.divIcon({ className: klassen.join(' '), html: '<span></span>', iconSize: [maat, maat] });
   }
 
@@ -338,8 +338,8 @@
         var el = b.vlak.getElement();
         if (el) el.classList.toggle('is-gekozen', b.id === staat.gekozen);
       }
-      // Een struweel zonder gegroepeerde planten is alleen zijn omtrek, zonder stip.
-      if (!zichtbaar(b) || (b.vlak && !gegroepeerd(b))) { boomlaag.removeLayer(b.marker); return; }
+      // Een struweel met omtrek krijgt geen stip; alleen zijn gegroepeerde planten staan erin.
+      if (!zichtbaar(b) || b.vlak) { boomlaag.removeLayer(b.marker); return; }
       b.marker.setIcon(icoon(b, animeer));
       var bovenop = status(b) === 'rijp' || status(b) === 'slecht';
       b.marker.setZIndexOffset(b.id === staat.gekozen ? 1000 : bovenop ? 500 : 0);
