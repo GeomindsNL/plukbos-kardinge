@@ -338,7 +338,8 @@
         var el = b.vlak.getElement();
         if (el) el.classList.toggle('is-gekozen', b.id === staat.gekozen);
       }
-      if (!zichtbaar(b)) { boomlaag.removeLayer(b.marker); return; }
+      // Een struweel zonder gegroepeerde planten is alleen zijn omtrek, zonder stip.
+      if (!zichtbaar(b) || (b.vlak && !gegroepeerd(b))) { boomlaag.removeLayer(b.marker); return; }
       b.marker.setIcon(icoon(b, animeer));
       var bovenop = status(b) === 'rijp' || status(b) === 'slecht';
       b.marker.setZIndexOffset(b.id === staat.gekozen ? 1000 : bovenop ? 500 : 0);
