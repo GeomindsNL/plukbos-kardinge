@@ -409,6 +409,16 @@ a { color: inherit; }
   object-fit: cover;
   border-radius: 14px 14px 0 0;
 }
+.foto-vergroot {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  border-radius: 14px 14px 0 0;
+}
+.foto-vergroot:focus-visible { outline-offset: -4px; }
 .geen-foto {
   display: grid;
   place-items: center;
@@ -559,6 +569,48 @@ a { color: inherit; }
 .over-sluit button {
   width: 36px; height: 36px; border-radius: 50%;
   border: 0; background: var(--veld-diep); font-size: 22px; line-height: 1; cursor: pointer;
+}
+
+/* ---------- Fotoviewer ---------- */
+
+.fotoviewer {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: rgba(14, 20, 16, .94);
+}
+.fotoviewer::backdrop { background: transparent; }
+.fotoviewer-vlak {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+  cursor: zoom-in;
+}
+.fotoviewer-vlak.is-ingezoomd { cursor: grab; }
+.fotoviewer-vlak.is-slepen { cursor: grabbing; }
+.fotoviewer-vlak img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.fotoviewer .sluit {
+  top: calc(16px + env(safe-area-inset-top));
+  right: calc(16px + env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  font-size: 28px;
 }
 
 /* ---------- Markers ---------- */

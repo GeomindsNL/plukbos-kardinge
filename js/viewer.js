@@ -354,8 +354,8 @@
   function renderKaartje(b) {
     var nr = b.nummer || b.id;
     var foto = b.fotos.length
-      ? '<a id="boomFotoLink" href="' + esc(fotoUrl(b.fotos[0])) + '" target="_blank" rel="noopener">' +
-          '<img id="boomFoto" src="' + esc(fotoUrl(b.fotos[0])) + '" alt="Foto van ' + esc(naam(b)) + ', boom ' + esc(nr) + '"></a>'
+      ? '<button type="button" class="foto-vergroot" id="boomFotoKnop" data-foto="' + esc(b.fotos[0]) + '" title="Vergroten">' +
+          '<img id="boomFoto" src="' + esc(fotoUrl(b.fotos[0])) + '" alt="Foto van ' + esc(naam(b)) + ', boom ' + esc(nr) + ', vergroten"></button>'
       : '<div class="geen-foto">Nog geen foto</div>';
     var strook = '';
     if (b.fotos.length > 1) {
@@ -477,6 +477,100 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Fotoviewer: scrollen zoomt naar de cursor, slepen verschuift, knijpen zoomt op touch
+  // ---------------------------------------------------------------------------
+  var MAX_ZOOM = 8;
+  var zicht = { s: 1, x: 0, y: 0 };   // schaal en verschuiving vanaf het midden
+  var wijzers = {};                    // actieve muis- en vingerposities per pointerId
+
+  function toonZicht() {
+    var vlak = $('fotoVlak'), img = $('fotoGroot');
+    var maxX = Math.max(0, (img.offsetWidth * zicht.s - vlak.clientWidth) / 2);
+    var maxY = Math.max(0, (img.offsetHeight * zicht.s - vlak.clientHeight) / 2);
+    zicht.x = Math.min(maxX, Math.max(-maxX, zicht.x));
+    zicht.y = Math.min(maxY, Math.max(-maxY, zicht.y));
+    img.style.transform = 'translate(' + zicht.x + 'px,' + zicht.y + 'px) scale(' + zicht.s + ')';
+    vlak.classList.toggle('is-ingezoomd', zicht.s > 1);
+  }
+
+  // Zoomt met factor f rond schermpunt (px, py); dat punt van de foto blijft onder de cursor.
+  function zoomRond(f, px, py) {
+    var r = $('fotoVlak').getBoundingClientRect();
+    var s = Math.min(MAX_ZOOM, Math.max(1, zicht.s * f));
+    f = s / zicht.s;
+    var mx = px - r.left - r.width / 2, my = py - r.top - r.height / 2;
+    zicht.x = mx - f * (mx - zicht.x);
+    zicht.y = my - f * (my - zicht.y);
+    zicht.s = s;
+  }
+
+  function openFoto(naam, alt) {
+    var dlg = $('fotoviewer');
+    if (typeof dlg.showModal !== 'function') { window.open(fotoUrl(naam), '_blank', 'noopener'); return; }
+    zicht = { s: 1, x: 0, y: 0 };
+    wijzers = {};
+    $('fotoGroot').src = fotoUrl(naam);
+    $('fotoGroot').alt = alt || '';
+    toonZicht();
+    dlg.showModal();
+  }
+
+  function koppelFotoviewer() {
+    var vlak = $('fotoVlak');
+
+    vlak.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      var d = e.deltaY * (e.deltaMode === 1 ? 33 : 1);   // deltaMode 1: regels in plaats van pixels
+      zoomRond(Math.exp(-d * 0.002), e.clientX, e.clientY);
+      toonZicht();
+    }, { passive: false });
+
+    vlak.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      vlak.setPointerCapture(e.pointerId);
+      wijzers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      vlak.classList.add('is-slepen');
+    });
+
+    vlak.addEventListener('pointermove', function (e) {
+      var oud = wijzers[e.pointerId];
+      if (!oud) return;
+      var ids = Object.keys(wijzers);
+      if (ids.length === 1) {
+        zicht.x += e.clientX - oud.x;
+        zicht.y += e.clientY - oud.y;
+      } else if (ids.length === 2) {
+        var ander = wijzers[ids[0] === String(e.pointerId) ? ids[1] : ids[0]];
+        var oudAfstand = Math.hypot(oud.x - ander.x, oud.y - ander.y);
+        var nieuwAfstand = Math.hypot(e.clientX - ander.x, e.clientY - ander.y);
+        var omx = (oud.x + ander.x) / 2, omy = (oud.y + ander.y) / 2;
+        if (oudAfstand > 0) zoomRond(nieuwAfstand / oudAfstand, omx, omy);
+        zicht.x += (e.clientX + ander.x) / 2 - omx;
+        zicht.y += (e.clientY + ander.y) / 2 - omy;
+      }
+      wijzers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      toonZicht();
+    });
+
+    function laatLos(e) {
+      delete wijzers[e.pointerId];
+      if (!Object.keys(wijzers).length) vlak.classList.remove('is-slepen');
+    }
+    vlak.addEventListener('pointerup', laatLos);
+    vlak.addEventListener('pointercancel', laatLos);
+
+    // Dubbelklik wisselt tussen passend en ingezoomd op die plek.
+    vlak.addEventListener('dblclick', function (e) {
+      if (zicht.s > 1) zicht = { s: 1, x: 0, y: 0 };
+      else zoomRond(2.5, e.clientX, e.clientY);
+      toonZicht();
+    });
+
+    $('fotoSluit').addEventListener('click', function () { $('fotoviewer').close(); });
+    window.addEventListener('resize', function () { if ($('fotoviewer').open) toonZicht(); });
+  }
+
+  // ---------------------------------------------------------------------------
   // Bediening
   // ---------------------------------------------------------------------------
   function zetGreep(open) {
@@ -536,11 +630,13 @@
       if (e.target.closest('.sluit')) { sluitKaartje(); return; }
       var naar = e.target.closest('.naar-boom');
       if (naar) { kies(naar.getAttribute('data-id'), true); return; }
+      var groot = e.target.closest('.foto-vergroot');
+      if (groot) { openFoto(groot.getAttribute('data-foto'), $('boomFoto').alt.replace(/, vergroten$/, '')); return; }
       var knop = e.target.closest('.fotostrook button');
       if (!knop) return;
       var f = knop.getAttribute('data-foto');
       $('boomFoto').src = fotoUrl(f);
-      $('boomFotoLink').href = fotoUrl(f);
+      $('boomFotoKnop').setAttribute('data-foto', f);
       Array.prototype.forEach.call(knop.parentNode.children, function (k) {
         k.setAttribute('aria-pressed', String(k === knop));
       });
@@ -549,8 +645,10 @@
     kaart.on('click', sluitKaartje);
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !$('over').open) sluitKaartje();
+      if (e.key === 'Escape' && !$('over').open && !$('fotoviewer').open) sluitKaartje();
     });
+
+    koppelFotoviewer();
 
     $('greep').addEventListener('click', function () {
       var open = $('paneel').classList.toggle('is-open');
