@@ -7,6 +7,7 @@ Gebruik:
 Verwacht in die map:
     trees.csv       de export van Boomwacht
     images/         de foto's waarnaar trees.csv verwijst
+    beds.csv        (optioneel) de omtrek en overige soorten van de struwelen
 
 Schrijft:
     data/bomen.geojson
@@ -23,6 +24,7 @@ Vereist Pillow:  pip install pillow
 """
 import csv
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -41,7 +43,7 @@ FOTO_MAX = 900       # langste zijde in pixels
 KLEIN_MAX = 240
 KWALITEIT = 72
 
-GEZONDHEID = {'good': 'goed', 'fair': 'matig', 'poor': 'slecht', 'unknown': 'onbekend'}
+GEZONDHEID = {'good': 'goed', 'fair': 'matig', 'poor': 'slecht', 'critical': 'slecht', 'unknown': 'onbekend'}
 
 
 def laad_soorten():
@@ -82,6 +84,44 @@ def splits(tekst):
     return [d.strip() for d in tekst.split(';') if d.strip()]
 
 
+def laad_struwelen(bronmap):
+    """beds.csv per bed_id; leeg als de export geen struwelen heeft."""
+    pad = bronmap / 'beds.csv'
+    if not pad.exists():
+        return {}
+    return {r['bed_id'].strip(): r for r in csv.DictReader(pad.open(encoding='utf-8-sig'))}
+
+
+def omtrek(wkt):
+    """POLYGON((lon lat, ...)) naar een GeoJSON-ring; None zonder omtrek."""
+    paren = re.findall(r'(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)', wkt or '')
+    return [[float(x), float(y)] for x, y in paren] if len(paren) >= 4 else None
+
+
+def struweel_props(struweel, op_naam, op_latijn):
+    props = {'type': 'struweel'}
+    if struweel['area_m2'].strip():
+        props['oppervlakte'] = round(float(struweel['area_m2']))
+    if struweel['plant_count'].strip():
+        props['aantal_planten'] = int(float(struweel['plant_count']))
+    # Overige soorten van een gemengd struweel; Latijnse en Nederlandse namen staan in dezelfde volgorde.
+    latijn = struweel['other_species'].split(';')
+    namen = struweel['other_common_names_nl'].split(';')
+    ook = []
+    for i in range(max(len(latijn), len(namen))):
+        la = latijn[i].strip() if i < len(latijn) else ''
+        nl = namen[i].strip() if i < len(namen) else ''
+        naam = op_naam.get(nl.lower()) or op_latijn.get(la.lower()) or nl or la
+        if naam and naam not in ook:
+            ook.append(naam)
+    if ook:
+        props['ook'] = ook
+    planten = splits(struweel['grouped_plant_ids'])
+    if planten:
+        props['planten'] = planten
+    return props
+
+
 def main(bronmap):
     bronmap = Path(bronmap)
     csv_pad = bronmap / 'trees.csv'
@@ -90,7 +130,8 @@ def main(bronmap):
 
     soorten, op_naam, op_latijn = laad_soorten()
     rijen = list(csv.DictReader(csv_pad.open(encoding='utf-8-sig')))
-    print(f'{len(rijen)} bomen in {csv_pad}')
+    struwelen = laad_struwelen(bronmap)
+    print(f'{len(rijen)} bomen in {csv_pad}, waarvan {len(struwelen)} struwelen')
 
     if UIT_FOTO.exists():
         shutil.rmtree(UIT_FOTO)
@@ -102,7 +143,20 @@ def main(bronmap):
     for rij in rijen:
         soort, latijn = bepaal_soort(rij, op_naam, op_latijn, onbekend)
         boom_id = rij['tree_id'].strip()
-        props = {'id': boom_id, 'nummer': int(rij['marker']), 'soort': soort}
+        props = {'id': boom_id}
+        # Planten die in een struweel zijn gegroepeerd hebben geen nummer; het struweel heeft er een.
+        if rij['marker'].strip():
+            props['nummer'] = int(rij['marker'])
+        props['soort'] = soort
+        geometrie = {'type': 'Point', 'coordinates': [float(rij['x']), float(rij['y'])]}
+        if rij.get('kind', '').strip() == 'bed':
+            struweel = struwelen.get(boom_id)
+            props.update(struweel_props(struweel, op_naam, op_latijn) if struweel else {'type': 'struweel'})
+            ring = omtrek(struweel['geometry_wkt']) if struweel else None
+            if ring:
+                geometrie = {'type': 'Polygon', 'coordinates': [ring]}
+        if rij.get('bed_id', '').strip():
+            props['struweel'] = rij['bed_id'].strip()
 
         ras = rij['variety'].strip()
         if ras:
@@ -150,18 +204,20 @@ def main(bronmap):
         features.append({
             'type': 'Feature',
             'id': boom_id,
-            'geometry': {'type': 'Point', 'coordinates': [float(rij['x']), float(rij['y'])]},
+            'geometry': geometrie,
             'properties': props,
         })
 
-    features.sort(key=lambda f: f['properties']['nummer'])
+    # De export staat al in kaartvolgorde, met gegroepeerde planten direct na hun struweel.
     datums = sorted(f['properties'].get('inspectiedatum', '') for f in features if f['properties'].get('inspectiedatum'))
+    aantal_struwelen = sum(1 for f in features if f['properties'].get('type') == 'struweel')
     uit = {
         'type': 'FeatureCollection',
         'metadata': {
             'bron': 'Boomwacht-export (Geominds)',
             'inspectie': f'{datums[0]} t/m {datums[-1]}' if datums else '',
-            'aantal_bomen': len(features),
+            'aantal_bomen': len(features) - aantal_struwelen,
+            'aantal_struwelen': aantal_struwelen,
         },
         'features': features,
     }
@@ -170,7 +226,7 @@ def main(bronmap):
     tekst = json.dumps(kop, ensure_ascii=False, indent=2)[:-2] + ',\n  "features": [\n    ' + ',\n    '.join(regels) + '\n  ]\n}\n'
     UIT_GEOJSON.write_text(tekst, encoding='utf-8')
 
-    print(f'{len(features)} bomen en {aantal_fotos} foto\'s weggeschreven')
+    print(f'{len(features) - aantal_struwelen} bomen, {aantal_struwelen} struwelen en {aantal_fotos} foto\'s weggeschreven')
     if onbekend:
         print('\nNiet in soorten.json, naam uit de export gebruikt:')
         for (naam, latijn), markers in onbekend.items():

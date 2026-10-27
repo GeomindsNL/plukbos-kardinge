@@ -74,6 +74,7 @@
   L.control.layers({ 'Luchtfoto': luchtfoto, 'Kaart': topokaart }, null, { position: 'topleft' }).addTo(kaart);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(kaart);
 
+  var struweellaag = L.layerGroup().addTo(kaart);   // omtrekken, onder de stippen
   var boomlaag = L.layerGroup().addTo(kaart);
 
   // ---------------------------------------------------------------------------
@@ -120,6 +121,10 @@
       oogst = sInfo.oogst;
     }
     var c = f.geometry.coordinates;
+    // Een struweel heeft een omtrek; de stip op de kaart komt in het midden daarvan.
+    var vorm = f.geometry.type === 'Polygon'
+      ? c[0].map(function (punt) { return L.latLng(punt[1], punt[0]); })
+      : null;
     var fotos = Array.isArray(p.fotos) ? p.fotos.map(String) : [];
     if (p.foto && fotos.indexOf(String(p.foto)) === -1) fotos.unshift(String(p.foto));
     return {
@@ -137,8 +142,17 @@
       problemen: Array.isArray(p.problemen) ? p.problemen.map(String) : [],
       datum: p.inspectiedatum ? String(p.inspectiedatum) : '',
       geplant: p.geplant ? String(p.geplant) : '',
-      latlng: L.latLng(c[1], c[0]),
-      marker: null
+      latlng: vorm ? L.latLngBounds(vorm).getCenter() : L.latLng(c[1], c[0]),
+      vorm: vorm,
+      struweel: p.type === 'struweel' ? {
+        oppervlakte: Number(p.oppervlakte) || 0,
+        aantal: Number(p.aantal_planten) || 0,
+        ook: Array.isArray(p.ook) ? p.ook.map(String) : [],
+        planten: Array.isArray(p.planten) ? p.planten.map(String) : []
+      } : null,
+      inStruweel: p.struweel ? String(p.struweel) : '',
+      marker: null,
+      vlak: null
     };
   }
 
@@ -153,7 +167,11 @@
   // Afgeleide gegevens en teksten
   // ---------------------------------------------------------------------------
   function inOogst(b, maand) { return !!b.maanden[maand || staat.maand]; }
-  function vanSoort(b) { return !staat.soort || b.soort === staat.soort; }
+  function vanSoort(b) {
+    return !staat.soort || b.soort === staat.soort || (!!b.struweel && b.struweel.ook.indexOf(staat.soort) !== -1);
+  }
+  // Gegroepeerd: de planten van het struweel staan ook elk apart op de kaart.
+  function gegroepeerd(b) { return !!b.struweel && b.struweel.planten.length > 0; }
 
   function zichtbaar(b) {
     if (!vanSoort(b)) return false;
@@ -304,14 +322,25 @@
     var st = status(b);
     var klassen = ['boommarker', 'boommarker--' + st];
     if (b.id === staat.gekozen) klassen.push('is-gekozen');
+    if (b.struweel) klassen.push('is-struweel');
+    if (b.inStruweel) klassen.push('is-in-struweel');
     if (animeer && st === 'rijp' && !minderBeweging) klassen.push('is-nieuw');
-    var maat = MAAT[st] + (b.id === staat.gekozen ? 4 : 0);
+    // Planten in een struweel staan dicht op elkaar binnen de omtrek; daarom heel klein.
+    var maat = (b.inStruweel ? Math.max(7, Math.round(MAAT[st] * 0.4)) : MAAT[st]) + (b.id === staat.gekozen ? 4 : 0);
     return L.divIcon({ className: klassen.join(' '), html: '<span></span>', iconSize: [maat, maat] });
   }
 
   function renderMarkers(animeer) {
     bomen.forEach(function (b) {
-      if (!zichtbaar(b)) { boomlaag.removeLayer(b.marker); return; }
+      if (b.vlak) {
+        if (!zichtbaar(b)) struweellaag.removeLayer(b.vlak);
+        else if (!struweellaag.hasLayer(b.vlak)) struweellaag.addLayer(b.vlak);
+        var el = b.vlak.getElement();
+        if (el) el.classList.toggle('is-gekozen', b.id === staat.gekozen);
+        if (b.id === staat.gekozen && struweellaag.hasLayer(b.vlak)) b.vlak.bringToFront();
+      }
+      // Een struweel met omtrek krijgt geen stip; alleen zijn gegroepeerde planten staan erin.
+      if (!zichtbaar(b) || b.vlak) { boomlaag.removeLayer(b.marker); return; }
       b.marker.setIcon(icoon(b, animeer));
       var bovenop = status(b) === 'rijp' || status(b) === 'slecht';
       b.marker.setZIndexOffset(b.id === staat.gekozen ? 1000 : bovenop ? 500 : 0);
@@ -342,6 +371,28 @@
       cellen += '<span class="' + (b.maanden[m] ? 'aan' : '') + (m === nuMaand ? ' nu' : '') + '"></span>';
       namen += '<span>' + KORT[m - 1] + '</span>';
     }
+    var struweel = '', planten = '';
+    if (b.struweel) {
+      var s = b.struweel;
+      struweel =
+        '<div><dt>Struweel</dt><dd><i class="vlakje vlakje--' + (gegroepeerd(b) ? 'gegroepeerd' : 'los') + '"></i>' +
+          (s.oppervlakte ? esc(s.oppervlakte) + ' m²' : 'Oppervlakte onbekend') +
+          (s.aantal ? ', ' + esc(meervoud(s.aantal, 'plant', 'planten')) : '') + '</dd></div>' +
+        (s.ook.length ? '<div><dt>Ook in dit struweel</dt><dd>' + esc(s.ook.join(', ')) + '</dd></div>' : '');
+      var leden = s.planten.map(vindBoom).filter(Boolean);
+      if (leden.length) {
+        planten = '<div class="struweel-planten"><p>Planten in dit struweel</p><ul>' +
+          leden.map(function (p) {
+            return '<li><button type="button" class="naar-boom" data-id="' + esc(p.id) + '">' +
+              '<i class="stip stip--' + status(p) + '"></i>' + esc(naam(p)) + '</button></li>';
+          }).join('') + '</ul></div>';
+      }
+    }
+    var ouder = b.inStruweel ? vindBoom(b.inStruweel) : null;
+    if (ouder) {
+      struweel = '<div><dt>In struweel</dt><dd><button type="button" class="naar-boom" data-id="' + esc(ouder.id) + '">' +
+        esc(naam(ouder)) + (ouder.nummer ? ' (' + esc(ouder.nummer) + ')' : '') + '</button></dd></div>';
+    }
     $('boom').innerHTML =
       '<button type="button" class="sluit" aria-label="Sluiten">&times;</button>' +
       '<figure class="boom-foto">' + foto + strook + '</figure>' +
@@ -355,11 +406,13 @@
         '</div>' +
         '<p class="oogsttekst">' + oogstTekst(b) + '</p>' +
         '<dl class="feiten">' +
+          struweel +
           '<div><dt>Gezondheid</dt><dd><i class="stip stip--' + b.gezondheid + '"></i>' + GEZONDHEID[b.gezondheid] + '</dd></div>' +
           '<div><dt>Geïnspecteerd</dt><dd>' + esc(datumTekst(b.datum)) + '</dd></div>' +
           (b.geplant ? '<div><dt>Geplant</dt><dd>' + esc(datumTekst(b.geplant)) + '</dd></div>' : '') +
           '<div><dt>Boomnummer</dt><dd>' + esc(nr) + '</dd></div>' +
         '</dl>' +
+        planten +
         (b.problemen.length
           ? '<div class="problemen"><p>Aandachtspunten</p><ul>' + b.problemen.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>'
           : '') +
@@ -397,7 +450,7 @@
   function kies(id, focus) {
     var b = vindBoom(id);
     if (!b) return;
-    staat.gekozen = id;
+    staat.gekozen = b.id;   // id kan ook een boomnummer zijn, zoals bij #12
     renderKaartje(b);
     $('boom').hidden = false;
     $('paneel').classList.remove('is-open');
@@ -481,6 +534,8 @@
 
     $('boom').addEventListener('click', function (e) {
       if (e.target.closest('.sluit')) { sluitKaartje(); return; }
+      var naar = e.target.closest('.naar-boom');
+      if (naar) { kies(naar.getAttribute('data-id'), true); return; }
       var knop = e.target.closest('.fotostrook button');
       if (!knop) return;
       var f = knop.getAttribute('data-foto');
@@ -535,9 +590,25 @@
     if (geo && geo.metadata && geo.metadata.voorbeeld) $('voorbeeld').hidden = false;
 
     bomen = (geo.features || [])
-      .filter(function (f) { return f.geometry && f.geometry.type === 'Point'; })
+      .filter(function (f) { return f.geometry && (f.geometry.type === 'Point' || f.geometry.type === 'Polygon'); })
       .map(function (f, i) { return maakBoom(f, i, soorten || {}); });
-    if (!bomen.length) throw new Error('Het bestand bevat geen bomen met een puntlocatie.');
+    if (!bomen.length) throw new Error('Het bestand bevat geen bomen met een locatie.');
+
+    bomen.forEach(function (b) {
+      if (!b.vorm) return;
+      b.vlak = L.polygon(b.vorm, {
+        className: 'struweel struweel--' + (gegroepeerd(b) ? 'gegroepeerd' : 'los'),
+        bubblingMouseEvents: false     // anders sluit de klik op de kaart het kaartje meteen weer
+      });
+      b.vlak.on('click', function () { kies(b.id); });
+    });
+
+    var soortenStruweel = { los: false, gegroepeerd: false };
+    bomen.forEach(function (b) { if (b.struweel) soortenStruweel[gegroepeerd(b) ? 'gegroepeerd' : 'los'] = true; });
+    $('struweelLegenda').innerHTML =
+      (soortenStruweel.los ? '<span><i class="vlakje vlakje--los"></i>Struweel</span>' : '') +
+      (soortenStruweel.gegroepeerd ? '<span><i class="vlakje vlakje--gegroepeerd"></i>Struweel, planten apart op de kaart</span>' : '');
+    $('struweelLegenda').hidden = !soortenStruweel.los && !soortenStruweel.gegroepeerd;
 
     bomen.forEach(function (b) {
       b.marker = L.marker(b.latlng, { title: (b.nummer ? b.nummer + '. ' : '') + naam(b), keyboard: true, riseOnHover: true });
