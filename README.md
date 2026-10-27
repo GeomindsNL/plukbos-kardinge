@@ -46,7 +46,7 @@ Zet in `js/viewer.js` bij `broncodeUrl` het adres van de repository. Dan verschi
 
 ## Gegevens bijwerken
 
-De bomen zijn ingemeten met Boomwacht. Na een nieuwe inspectie exporteer je daaruit een map met `trees.csv` en een map `images/`, en zet je die om met het importscript:
+De bomen zijn ingemeten met Boomwacht. Na een nieuwe inspectie exporteer je daaruit een map met `trees.csv`, `beds.csv` en een map `images/`, en zet je die om met het importscript:
 
 ```
 pip install pillow
@@ -57,7 +57,7 @@ Het script schrijft `data/bomen.geojson` en vult `data/foto/` opnieuw met foto's
 
 ### Bomen: `data/bomen.geojson`
 
-Een standaard GeoJSON FeatureCollection met punten in WGS84 (lengtegraad, breedtegraad). Opent direct in QGIS en op geojson.io. Het importscript maakt dit bestand, maar het is ook met de hand te bewerken.
+Een standaard GeoJSON FeatureCollection in WGS84 (lengtegraad, breedtegraad): een punt per boom en een vlak (`Polygon`) per struweel. Opent direct in QGIS en op geojson.io. Het importscript maakt dit bestand, maar het is ook met de hand te bewerken.
 
 | Veld | Verplicht | Inhoud |
 |---|---|---|
@@ -74,6 +74,18 @@ Een standaard GeoJSON FeatureCollection met punten in WGS84 (lengtegraad, breedt
 | `problemen` | nee | lijst met aandachtspunten, bijvoorbeeld `["Appelschurft", "Stamscheur"]` |
 | `oogst_van`, `oogst_tot` | nee | maandnummers 1 tot en met 12; overschrijven de periode uit `soorten.json` voor deze ene boom |
 | `wetenschappelijk` | nee | Latijnse naam; overschrijft die uit `soorten.json` |
+
+Een struweel is een groep planten die als geheel is vastgelegd en geïnspecteerd, zoals een gemengde haag. Het heeft dezelfde velden als een boom, plus:
+
+| Veld | Verplicht | Inhoud |
+|---|---|---|
+| `type` | ja | `struweel` |
+| `oppervlakte` | nee | oppervlakte van de omtrek in m² |
+| `aantal_planten` | nee | aantal planten zoals ingevoerd in Boomwacht |
+| `ook` | nee | de overige soorten van een gemengd struweel, bijvoorbeeld `["Appel"]` |
+| `planten` | nee | ids van de planten die apart zijn vastgelegd en in het struweel gegroepeerd |
+
+Zo'n gegroepeerde plant staat als eigen punt in het bestand, zonder `nummer` en met `struweel` (het id van het struweel). De kaart tekent een struweel met gegroepeerde planten donker goud en een struweel zonder appelgroen; de kleuren staan als `--struweel-gegroepeerd` en `--struweel-los` in `css/viewer.css`.
 
 Bij elke foto `naam.jpg` hoort een miniatuur `naam-klein.jpg`. Ontbreekt die, dan gebruikt de viewer de foto zelf.
 

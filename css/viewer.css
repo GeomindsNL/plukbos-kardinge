@@ -35,6 +35,8 @@
   --matig: #E2A200;
   --slecht: #C83440;
   --onbekend: #8B948A;
+  --struweel-los: #76B030;          /* appelgroen */
+  --struweel-gegroepeerd: #A87C0C;  /* donker goud */
 
   --kop: "Newsreader", Georgia, "Times New Roman", serif;
   --tekst: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -232,6 +234,18 @@ a { color: inherit; }
 .stip--matig { background: var(--matig); }
 .stip--slecht { background: var(--slecht); }
 .stip--onbekend { background: var(--onbekend); }
+
+.vlakje {
+  display: inline-block;
+  flex: none;
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid;
+}
+.vlakje--los { border-color: var(--struweel-los); background: color-mix(in srgb, var(--struweel-los) 35%, transparent); }
+.vlakje--gegroepeerd { border-color: var(--struweel-gegroepeerd); background: color-mix(in srgb, var(--struweel-gegroepeerd) 35%, transparent); }
+.struweel-legenda { margin-top: 14px; }
 
 /* ---------- Gezondheid ---------- */
 
@@ -482,6 +496,21 @@ a { color: inherit; }
 .problemen p { margin: 0 0 4px; font-weight: 700; }
 .problemen ul { margin: 0; padding-left: 18px; }
 .problemen li + li { margin-top: 2px; }
+.naar-boom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.struweel-planten { margin: 16px 0 0; }
+.struweel-planten p { margin: 0 0 4px; font-weight: 700; }
+.struweel-planten ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .opmerking {
   margin: 16px 0 0;
   padding: 10px 12px;
@@ -561,6 +590,14 @@ a { color: inherit; }
 .boommarker--matig span { background: var(--matig); }
 .boommarker--slecht span { background: var(--slecht); }
 .boommarker--onbekend span { background: var(--onbekend); }
+
+.boommarker.is-struweel span { border-radius: 4px; }
+
+/* Omtrek van een struweel; CSS gaat boven de kleuren die Leaflet als attribuut zet. */
+.struweel { stroke-width: 2.5; fill-opacity: .3; }
+.struweel--los { stroke: var(--struweel-los); fill: var(--struweel-los); }
+.struweel--gegroepeerd { stroke: var(--struweel-gegroepeerd); fill: var(--struweel-gegroepeerd); }
+.struweel.is-gekozen { stroke-width: 4; fill-opacity: .45; }
 
 .boommarker.is-gekozen span {
   box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--inkt), 0 2px 10px rgba(0, 0, 0, .5);
