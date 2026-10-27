@@ -337,6 +337,7 @@
         else if (!struweellaag.hasLayer(b.vlak)) struweellaag.addLayer(b.vlak);
         var el = b.vlak.getElement();
         if (el) el.classList.toggle('is-gekozen', b.id === staat.gekozen);
+        if (b.id === staat.gekozen && struweellaag.hasLayer(b.vlak)) b.vlak.bringToFront();
       }
       // Een struweel met omtrek krijgt geen stip; alleen zijn gegroepeerde planten staan erin.
       if (!zichtbaar(b) || b.vlak) { boomlaag.removeLayer(b.marker); return; }
@@ -449,7 +450,7 @@
   function kies(id, focus) {
     var b = vindBoom(id);
     if (!b) return;
-    staat.gekozen = id;
+    staat.gekozen = b.id;   // id kan ook een boomnummer zijn, zoals bij #12
     renderKaartje(b);
     $('boom').hidden = false;
     $('paneel').classList.remove('is-open');

@@ -598,7 +598,7 @@ a { color: inherit; }
 .struweel { stroke-width: 2.5; fill-opacity: .3; }
 .struweel--los { stroke: var(--struweel-los); fill: var(--struweel-los); }
 .struweel--gegroepeerd { stroke: var(--struweel-gegroepeerd); fill: var(--struweel-gegroepeerd); }
-.struweel.is-gekozen { stroke-width: 4; fill-opacity: .45; }
+.struweel.is-gekozen { stroke: #CCFF00; stroke-width: 4; fill-opacity: .45; }   /* fel geelgroen */
 
 .boommarker.is-gekozen span {
   box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--inkt), 0 2px 10px rgba(0, 0, 0, .5);
