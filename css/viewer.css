@@ -592,6 +592,7 @@ a { color: inherit; }
 .boommarker--onbekend span { background: var(--onbekend); }
 
 .boommarker.is-struweel span { border-radius: 4px; }
+.boommarker.is-in-struweel span { border-width: 1.5px; box-shadow: 0 1px 3px rgba(0, 0, 0, .45); }
 
 /* Omtrek van een struweel; CSS gaat boven de kleuren die Leaflet als attribuut zet. */
 .struweel { stroke-width: 2.5; fill-opacity: .3; }

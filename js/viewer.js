@@ -323,8 +323,10 @@
     var klassen = ['boommarker', 'boommarker--' + st];
     if (b.id === staat.gekozen) klassen.push('is-gekozen');
     if (b.struweel) klassen.push('is-struweel');
+    if (b.inStruweel) klassen.push('is-in-struweel');
     if (animeer && st === 'rijp' && !minderBeweging) klassen.push('is-nieuw');
-    var maat = MAAT[st] + (b.id === staat.gekozen ? 4 : 0);
+    // Planten in een struweel staan dicht op elkaar binnen de omtrek; daarom veel kleiner.
+    var maat = (b.inStruweel ? Math.max(8, Math.round(MAAT[st] / 2)) : MAAT[st]) + (b.id === staat.gekozen ? 4 : 0);
     return L.divIcon({ className: klassen.join(' '), html: '<span></span>', iconSize: [maat, maat] });
   }
 
